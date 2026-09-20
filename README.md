@@ -1,55 +1,64 @@
 # World Is Agent Adapters
 
-本仓库包含 **World Is Agent（WIA）** 的官方游戏 Adapter。每个 Adapter 负责把游戏事件、环境观察和能力转换为 WIA Protocol，并在游戏主线程执行 Runtime 返回的游戏动作。
+这里提供 **World Is Agent（WIA）** 的官方游戏 Adapter。Adapter 安装在游戏中，负责把游戏里的角色、事件和环境状态交给 WIA Runtime，并把 Runtime 决定的对话或行动带回游戏执行。
 
-| 游戏 | 目录 | 构建要求 | 通信方式 |
+![World Is Agent Adapters 架构概览](docs/images/world-is-agent-adapters.png)
+
+## 选择你的游戏
+
+| 游戏 | Adapter 版本 | 需要安装 | 支持平台 | 详细说明 |
+| --- | --- | --- | --- | --- |
+| Stardew Valley | 0.1.1 | Stardew Valley、SMAPI | Windows | [安装与构建说明](stardew-valley/README.md) |
+| RimWorld | 0.1.0 | RimWorld 1.6 | Windows x64 | [安装与构建说明](rimworld/README.md) |
+
+每个游戏的 Adapter 独立安装、独立发布，版本也分别维护。你只需要安装自己所玩游戏对应的 Adapter。
+
+## 安装和使用
+
+1. 安装并启动 [WIA Runtime 0.2.0](https://github.com/zlci7/world-is-agent)。
+2. 从本仓库的 [Releases](https://github.com/zlci7/world-is-agent-adapters/releases) 下载对应游戏的 Adapter 压缩包。
+3. 按对应游戏的说明，把 Adapter 安装到游戏的 Mod 目录。
+4. 在 Runtime Web 控制台中选择对应游戏，配置模型并等待状态变为 **Ready**。
+5. 启动游戏、启用 Adapter 并加载存档。
+
+当前发布包尚在最终验收阶段。如果 Releases 页面中没有所需版本，可以按游戏目录中的说明从源码构建；不要安装来源和版本不明确的包。
+
+## 游戏怎样连接 Runtime
+
+Runtime 默认监听 `127.0.0.1:50051`。Adapter 会在游戏启动后自动连接这个地址，因此 Web 控制台不需要填写游戏安装目录或手动配置端口。
+
+建议先启动 Runtime 并选择游戏，再启动对应游戏。如果当前选择了另一个游戏，Adapter 会收到 `game_mismatch` 并继续重试；在控制台切换到正确游戏后，它会自动完成连接。
+
+一个 Runtime 同一时间服务一个游戏。切换游戏会取消正在执行的回合，但不会删除已经记录的历史。
+
+## 版本对应关系
+
+| Runtime | 游戏 | Adapter | 发布包 |
 | --- | --- | --- | --- |
-| Stardew Valley | [stardew-valley](stardew-valley/README.md) | .NET SDK、游戏与 SMAPI 引用、固定版本的 Protocol 源码 | net6.0、Grpc.Net.Client |
-| RimWorld | [rimworld](rimworld/README.md) | .NET SDK、固定版本的 NuGet 引用程序集和 Protocol 源码 | net472、Grpc.Core、Windows x64 原生库 |
+| 0.2.0 | Stardew Valley | 0.1.1 | `wia-adapter-stardew-valley-v0.1.1.zip` |
+| 0.2.0 | RimWorld | 0.1.0 | `wia-adapter-rimworld-v0.1.0.zip` |
 
-[world-is-agent](https://github.com/zlci7/world-is-agent) 仓库负责 Runtime、Web 控制台、Protocol、Game Profile、Prompt 和 Definitions；本仓库负责 Adapter、游戏资产、测试以及构建、安装和打包脚本。每个游戏目录都可以根据自身声明的依赖独立工作，不依赖另一个游戏，也不依赖仓库根目录的辅助脚本。
+Stardew Valley 和 RimWorld 分别发布，更新其中一个不会改变另一个的版本。
 
-## 运行方式
+## 当前发布状态
 
-1. 按照对应游戏目录中的说明构建并安装 Adapter。
-2. 启动 WIA Runtime，在 Web 控制台中选择对应游戏；根据需要配置模型，并等待状态变为 **Ready**。
-3. 启用 Adapter 后启动游戏并加载存档。
+两个游戏的基础实机闭环已经通过。正式发布前仍需完成运行时切换游戏、自动重连和修改模型的聚焦实机验收；对应 tag 和 GitHub Release 在验收通过后创建。
 
-Runtime 默认监听 `127.0.0.1:50051`。Web 控制台不配置游戏安装目录；游戏路径只在构建和安装 Adapter 时使用。
+## 从源码构建
 
-Runtime 0.2.0 同一时间加载一个 Game Profile。**Switch game（切换游戏）** 会在当前进程中应用新的选择，取消正在执行的回合并保留已有历史记录。**Model settings（模型设置）** 可以修改服务商、模型、API Key 和可选的 Base URL。其它游戏的 Adapter 会收到 `game_mismatch`；Stardew Adapter 0.1.1 和 RimWorld Adapter 0.1.0 会持续重试，直到 Runtime 选择了对应游戏。
+源码构建需要 .NET SDK 和与当前版本匹配的 WIA Protocol。Stardew Valley 还需要本机游戏与 SMAPI 的构建引用；RimWorld 使用固定版本的引用程序集。
 
-## 版本与协议
+- [构建 Stardew Valley Adapter](stardew-valley/README.md)
+- [构建 RimWorld Adapter](rimworld/README.md)
 
-每个游戏分别维护自己的 `VERSION` 和 `protocol.version`：
-
-- `VERSION` 决定程序集信息版本、Hello 上报版本，以及适用的 Mod Manifest 版本。
-- `protocol.version` 指定已经验证的 Protocol tag；构建和打包时必须显式提供对应的 Protocol 目录。
-
-| 游戏 | Release tag | 压缩包 |
-| --- | --- | --- |
-| Stardew Valley | `stardew-valley-v<version>` | `wia-adapter-stardew-valley-v<version>.zip` |
-| RimWorld | `rimworld-v<version>` | `wia-adapter-rimworld-v<version>.zip` |
-
-发布某个游戏的 tag 不会同时发布另一个游戏。发布包会记录 Adapter 版本、源码 commit、Protocol pin 和实际解析出的 Protocol commit。游戏程序集、凭据、本地配置和构建缓存不会进入 Git 仓库。
-
-## 构建与验证
-
-每个游戏目录都提供独立的构建、测试、安装和打包入口。仓库根目录的可选检查用于确认 Adapter 源码没有依赖 Runtime 内部实现：
+仓库维护者可以运行架构检查：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/check-architecture.ps1
 ```
 
-具体命令和游戏依赖参见：
+源码迁移记录参见 [docs/migration.md](docs/migration.md)。
 
-- [Stardew Valley Adapter](stardew-valley/README.md)
-- [RimWorld Adapter](rimworld/README.md)
+## 许可证
 
-## 当前状态
-
-Stardew Valley 与 RimWorld 的基础实机闭环已经通过。正式发布前仍需使用 Runtime 0.2.0 和 Stardew Adapter 0.1.1 完成一次聚焦实机验收：在回合执行期间切换游戏、确认历史记录保留、切回 Stardew Valley 并在自动重连后完成对话，然后修改模型并再次完成对话。当前构建为本地验收产物，tag 和 GitHub Release 在验收通过后创建。
-
-## 许可证与代码来源
-
-本项目使用 [MIT License](LICENSE)。每个游戏目录都包含一份许可证，便于独立分发。源码迁移记录参见 [docs/migration.md](docs/migration.md)。
+本项目使用 [MIT License](LICENSE)。每个游戏目录也包含一份许可证，便于独立分发。
