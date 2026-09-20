@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>GameAgent.Stardew</AssemblyName>
+    <RootNamespace>GameAgent.Stardew</RootNamespace>
+    <TargetFramework>net6.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AdapterVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</AdapterVersion>
+    <Version>$(AdapterVersion)</Version>
+    <AssemblyVersion>$(AdapterVersion).0</AssemblyVersion>
+    <FileVersion>$(AdapterVersion).0</FileVersion>
+    <AssemblyInformationalVersion>$(AdapterVersion)</AssemblyInformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <Target Name="ValidateExplicitDependencies" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(GamePath)' == ''" Text="GamePath is required. Pass -p:GamePath=&lt;Stardew Valley directory&gt;." />
+    <Error Condition="'$(WIA_PROTOCOL_DIR)' == ''" Text="WIA_PROTOCOL_DIR is required. Pass -p:WIA_PROTOCOL_DIR=&lt;protocol export directory&gt;." />
+    <Error Condition="!Exists('$(GamePath)\Stardew Valley.dll')" Text="GamePath does not contain Stardew Valley.dll: $(GamePath)" />
+    <Error Condition="!Exists('$(WIA_PROTOCOL_DIR)\proto\gameagent.proto')" Text="WIA_PROTOCOL_DIR does not contain proto/gameagent.proto: $(WIA_PROTOCOL_DIR)" />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="MonoGame.Framework" HintPath="$(GamePath)\MonoGame.Framework.dll" Private="False" />
+    <Reference Include="Stardew Valley" HintPath="$(GamePath)\Stardew Valley.dll" Private="False" />
+    <Reference Include="StardewModdingAPI" HintPath="$(GamePath)\StardewModdingAPI.dll" Private="False" />
+    <Reference Include="StardewValley.GameData" HintPath="$(GamePath)\StardewValley.GameData.dll" Private="False" />
+    <Reference Include="xTile" HintPath="$(GamePath)\xTile.dll" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.27.3" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.64.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.64.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="$(WIA_PROTOCOL_DIR)\proto\gameagent.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="assets\landmarks.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="GenerateVersionedManifest" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <GeneratedManifest>$(IntermediateOutputPath)manifest.json</GeneratedManifest>
+      <ManifestJson>{&quot;Name&quot;:&quot;GameAgent Stardew Adapter Probe&quot;,&quot;Author&quot;:&quot;GameAgent&quot;,&quot;Version&quot;:&quot;$(AdapterVersion)&quot;,&quot;Description&quot;:&quot;Runtime-connected adapter for sending Stardew NPC interaction events and executing GameAgent actions.&quot;,&quot;UniqueID&quot;:&quot;gameagent.StardewAdapterProbe&quot;,&quot;EntryDll&quot;:&quot;GameAgent.Stardew.dll&quot;,&quot;MinimumApiVersion&quot;:&quot;4.0.0&quot;,&quot;UpdateKeys&quot;:[]}</ManifestJson>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(GeneratedManifest)" Lines="$(ManifestJson)" Overwrite="true" Encoding="UTF-8" />
+    <ItemGroup>
+      <None Include="$(GeneratedManifest)" Link="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+</Project>
