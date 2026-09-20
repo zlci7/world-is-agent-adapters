@@ -7,7 +7,7 @@ Official game adapters for World Is Agent (WIA). Each adapter translates game ev
 | Stardew Valley | [stardew-valley](stardew-valley/README.md) | .NET SDK, game and SMAPI references, pinned Protocol sources | net6.0, Grpc.Net.Client |
 | RimWorld | [rimworld](rimworld/README.md) | .NET SDK, pinned NuGet reference assemblies, pinned Protocol sources | net472, Grpc.Core, Windows x64 native library |
 
-The `world-is-agent` repository owns the Runtime, browser console, Protocol, Game Profiles, prompts, and definitions. This repository owns the adapters, their game assets, tests, and build, install, and packaging scripts. Each game directory works independently with its declared dependencies; it does not require the other game or repository-root scripts.
+The [world-is-agent](https://github.com/zlci7/world-is-agent) repository owns the Runtime, browser console, Protocol, Game Profiles, prompts, and definitions. This repository owns the adapters, their game assets, tests, and build, install, and packaging scripts. Each game directory works independently with its declared dependencies; it does not require the other game or repository-root scripts.
 
 ## Run
 
