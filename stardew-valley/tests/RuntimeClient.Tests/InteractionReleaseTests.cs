@@ -1,5 +1,6 @@
 using System.Reflection;
 using GameAgent.Protocol.V1Alpha2;
+using GameAgent.Stardew.Capabilities;
 using GameAgent.Stardew.Dialogue;
 using GameAgent.Stardew.Runtime;
 using GameAgent.Stardew.Tasks;
@@ -49,14 +50,17 @@ internal sealed class ClientFixture
     public readonly NpcInteractionLifecycle Lifecycle;
     public readonly RuntimeClient Client;
     public InteractionContextStore Contexts => Field<InteractionContextStore>("interactionContextStore");
+    public ConversationStateStore Conversations => Field<ConversationStateStore>("conversationStore");
     public TaskInteractionConversationIndex Index => Field<TaskInteractionConversationIndex>("taskInteractionConversations");
 
     public ClientFixture()
     {
         Lifecycle = new(new TaskInteractionHandoffStore(), Control);
         var monitor = DispatchProxy.Create<IMonitor, SilentMonitor>();
+        var conversations = new ConversationStateStore(new ConversationIdGenerator());
         Client = new RuntimeClient(new AdapterConfig(), new MainThreadDispatcher(monitor), null!,
-            new ConversationStateStore(new ConversationIdGenerator()), null!, null!, null!, null!, null!, null!, null!,
+            conversations, null!, new PresentDialogueCapability(conversations, new DialogueInteractionController()), null!,
+            new MoveToCapability(), null!, null!, null!,
             new TaskExecutionDriver(new TaskSourceContextStore(), new TaskOperationReceipts(), new NpcControlLease()),
             new NpcControlLease(), new MeetingWaitMonitor(), Lifecycle, monitor);
         var operation = new OperationKey("world", "run", 1, "npc:Linus", "task", "wait");

@@ -7,6 +7,116 @@ namespace GameAgent.Stardew.Tests;
 
 public sealed class ConnectionOrderingTests
 {
+    [Fact]
+    public async Task ManualReconnectOwnerClearsOrdinaryInteractionBeforeStartingReplacement()
+    {
+        var fixture = new ClientFixture();
+        fixture.Contexts.Clear();
+        Assert.True(fixture.Contexts.TryReserve(ClientFixture.Snapshot("ordinary"), out _));
+        fixture.Contexts.Commit("ordinary");
+        fixture.Conversations.PrepareInteraction("world", "npc:Linus", "player:local", "ordinary");
+        Assert.NotNull(fixture.Conversations.GetCurrentConversation("world", "npc:Linus", "player:local"));
+        long epoch = (long)fixture.Call("StopConnection")!;
+
+        await ((Task)fixture.Call("StartAfterDisconnectAsync", Task.CompletedTask, epoch)!).WaitAsync(TimeSpan.FromSeconds(2));
+        fixture.Field<MainThreadDispatcher>("dispatcher").Drain();
+
+        Assert.Null(fixture.Contexts.TryGet("ordinary"));
+        Assert.Null(fixture.Conversations.GetCurrentConversation("world", "npc:Linus", "player:local"));
+        Assert.NotNull(fixture.Field<object?>("stream"));
+        fixture.Call("StopConnection");
+    }
+
+    [Fact]
+    public async Task DelayedReceiveWorkerCannotReconnectAfterWorldTeardown()
+    {
+        var fixture = new ClientFixture();
+        Func<Task>? worker = null;
+        var workerFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.SetField("runReceiveWorker", new Func<Func<Task>, Task>(work =>
+        {
+            worker = work;
+            return workerFinished.Task;
+        }));
+        fixture.Client.Start();
+
+        fixture.Client.ClearWorldContext();
+        await worker!().WaitAsync(TimeSpan.FromSeconds(2));
+        workerFinished.SetResult();
+        fixture.Field<MainThreadDispatcher>("dispatcher").Drain();
+
+        Assert.False(fixture.Field<ReconnectScheduler>("reconnectScheduler").HasPendingRetry);
+        Assert.Null(fixture.Field<object?>("stream"));
+    }
+
+    [Fact]
+    public async Task DelayedReceiveWorkerCannotOverlapManualReconnect()
+    {
+        var fixture = new ClientFixture();
+        var workers = new Queue<Func<Task>>();
+        var workerTasks = new Queue<TaskCompletionSource>();
+        fixture.SetField("runReceiveWorker", new Func<Func<Task>, Task>(work =>
+        {
+            workers.Enqueue(work);
+            var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            workerTasks.Enqueue(finished);
+            return finished.Task;
+        }));
+        fixture.Client.Start();
+
+        fixture.Client.Reconnect();
+        await workers.Dequeue()().WaitAsync(TimeSpan.FromSeconds(2));
+        workerTasks.Dequeue().SetResult();
+        MainThreadDispatcher dispatcher = fixture.Field<MainThreadDispatcher>("dispatcher");
+        await AssertEventuallyAsync(() =>
+        {
+            dispatcher.Drain();
+            return workers.Count == 1;
+        });
+
+        Assert.Single(workers);
+        Assert.False(fixture.Field<ReconnectScheduler>("reconnectScheduler").HasPendingRetry);
+        Assert.NotNull(fixture.Field<object?>("stream"));
+        fixture.Call("StopConnection");
+        workerTasks.Dequeue().SetResult();
+    }
+
+    private static async Task AssertEventuallyAsync(Func<bool> condition)
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(2);
+        while (!condition() && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+        Assert.True(condition());
+    }
+
+    [Fact]
+    public async Task EndOfStreamSchedulesAutomaticReconnect()
+    {
+        var fixture = new ClientFixture();
+        var transport = Attach(fixture);
+
+        await ((Task)fixture.Call("RunAsync", transport.Stream, CancellationToken.None, 0L)!).WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.True(fixture.Field<ReconnectScheduler>("reconnectScheduler").HasPendingRetry);
+        fixture.Call("StopConnection");
+    }
+
+    [Theory]
+    [InlineData("game_mismatch")]
+    [InlineData("runtime_not_ready")]
+    [InlineData("not_ready")]
+    public async Task TransientAdmissionRejectionEndsTheAttemptForRetry(string code)
+    {
+        var fixture = new ClientFixture();
+        Task handling = (Task)fixture.Call("HandleRuntimeMessageAsync", new RuntimeMessage
+        {
+            Error = new Error { Code = code, Message = "retry later" },
+        }, CancellationToken.None)!;
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => handling);
+        Assert.Equal(code, error.Message);
+    }
+
     [Theory]
     [InlineData(EventAckStatus.Accepted)]
     [InlineData(EventAckStatus.Duplicate)]

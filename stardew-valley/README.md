@@ -5,10 +5,10 @@ This directory contains the World Is Agent SMAPI adapter for Stardew Valley. It 
 The adapter version is read from `VERSION`. Its tested Protocol release is read from `protocol.version`. The current release contract is:
 
 ```text
-Adapter version: 0.1.0
+Adapter version: 0.1.1
 Protocol tag:    protocol-v1alpha2.0
-Release tag:     stardew-valley-v0.1.0
-Package:         wia-adapter-stardew-valley-v0.1.0.zip
+Release tag:     stardew-valley-v0.1.1
+Package:         wia-adapter-stardew-valley-v0.1.1.zip
 ```
 
 The build requires three explicit dependencies:
@@ -88,7 +88,7 @@ Create a release archive after the adapter repository has a commit. For an expor
   -GamePath $game `
   -ProtocolRepository $protocolRepository `
   -ProtocolDir $protocol `
-  -ReleaseTag stardew-valley-v0.1.0 `
+  -ReleaseTag stardew-valley-v0.1.1 `
   -SourceCommit <full-adapter-repository-commit>
 ```
 
@@ -98,4 +98,4 @@ The archive contains the SMAPI mod directory, runtime dependencies, assets, lice
 
 Start a WIA Runtime configured for Stardew Valley and wait for it to become Ready. Launch Stardew through SMAPI, load a save, and confirm the log reports the Runtime connection and `CapabilityList sent`. Interacting with an NPC should then produce `GameEvent`, `EventAck`, `Observation`, `ActionRequest`, `ActionResult`, and `TurnCompletion` messages.
 
-If the game connected before Runtime became Ready, run `gameagent_runtime_reconnect` in the SMAPI console or restart the game. A Runtime configured for another game rejects the connection with `game_mismatch`.
+If the Runtime is unavailable, reconfiguring, or configured for another game, the adapter clears stale action and dialogue state and retries the connection after a bounded delay. Each retry performs a fresh Hello, capability discovery, and world binding. Once the Runtime is Ready for Stardew Valley, the adapter reconnects without restarting the game. The `gameagent_runtime_reconnect` command remains available for an immediate manual reconnect.

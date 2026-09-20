@@ -48,6 +48,8 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     private readonly IMonitor monitor;
     private readonly SemaphoreSlim sendMu = new(1, 1);
     private readonly object connectionGate = new();
+    private readonly ReconnectScheduler reconnectScheduler = new();
+    private Func<Func<Task>, Task> runReceiveWorker = work => Task.Run(work);
     private readonly RuntimeSessionState sessionState = new();
     private readonly RuntimeWorldContext worldContext;
     private readonly WorldBindingExchange worldBindingExchange = new();
@@ -149,13 +151,14 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
             Interlocked.Exchange(ref this.worldBindingClockSequence, 0);
             this.worldBindingExchange.Reset();
             CancellationToken token = this.cancellation.Token;
-            this.receiveTask = Task.Run(() => this.RunAsync(token));
+            AsyncDuplexStreamingCall<AdapterMessage, RuntimeMessage> attemptStream = this.stream;
+            long epoch = this.connectionEpoch;
+            this.receiveTask = this.runReceiveWorker(() => this.RunAsync(attemptStream, token, epoch));
         }
     }
 
     public void Reconnect()
     {
-        this.ResetTaskRuntimeState("manual_rebind");
         this.RestartConnection();
     }
 
@@ -163,7 +166,7 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     {
         lock (this.connectionGate)
         {
-            this.connectionEpoch++;
+            this.connectionEpoch = this.reconnectScheduler.Invalidate();
             this.sessionState.Disconnect();
             this.cancellation?.Cancel();
             this.stream?.Dispose();
@@ -185,12 +188,20 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
         await previous;
         this.dispatcher.Enqueue(() =>
         {
-            lock (this.connectionGate)
-            {
-                if (!this.disposed && this.connectionEpoch == epoch)
-                    this.Start();
-            }
+            this.StartReplacementOnMainThread(epoch);
         });
+    }
+
+    private void StartReplacementOnMainThread(long epoch)
+    {
+        lock (this.connectionGate)
+        {
+            if (this.disposed || this.connectionEpoch != epoch)
+                return;
+            this.ClearRuntimeStreamStateOnMainThread();
+            this.receiveTask = null;
+            this.Start();
+        }
     }
 
     public void SendPlayerInteracted(NPC npc, Farmer player, string trigger)
@@ -382,7 +393,11 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     public void Dispose()
     {
         lock (this.connectionGate)
+        {
             this.disposed = true;
+            this.connectionEpoch++;
+            this.reconnectScheduler.Dispose();
+        }
         this.sessionState.Disconnect();
 
         try
@@ -403,11 +418,13 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
         this.sendMu.Dispose();
     }
 
-    private async Task RunAsync(CancellationToken cancellationToken)
+    private async Task RunAsync(
+        AsyncDuplexStreamingCall<AdapterMessage, RuntimeMessage> receivingStream,
+        CancellationToken cancellationToken,
+        long epoch)
     {
         try
         {
-            var receivingStream = this.stream ?? throw new OperationCanceledException(cancellationToken);
             await this.SendHelloAsync(cancellationToken);
 
             while (await receivingStream.ResponseStream.MoveNext(cancellationToken))
@@ -433,7 +450,22 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
             Interlocked.Exchange(ref this.worldBindingClockSequence, 0);
             this.checkpointReplies.FailAll("disconnected");
             this.checkpointBridge.OnDisconnected("runtime_disconnected");
-            this.dispatcher.Enqueue(() => this.ClearRuntimeStreamStateOnMainThread());
+            this.dispatcher.Enqueue(() =>
+            {
+                lock (this.connectionGate)
+                {
+                    if (this.disposed || this.connectionEpoch != epoch)
+                        return;
+                    this.ClearRuntimeStreamStateOnMainThread();
+                }
+            });
+            _ = this.reconnectScheduler.ScheduleAsync(epoch, () =>
+            {
+                this.dispatcher.Enqueue(() =>
+                {
+                    this.StartReplacementOnMainThread(epoch);
+                });
+            });
         }
     }
 
@@ -514,6 +546,8 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
 
             case RuntimeMessage.PayloadOneofCase.Error:
                 this.monitor.Log($"GameAgent Runtime error: {message.Error?.Code} {message.Error?.Message}", LogLevel.Warn);
+                if (IsRetryableAdmissionError(message.Error?.Code))
+                    throw new InvalidOperationException(message.Error!.Code);
                 break;
 
             default:
@@ -521,6 +555,9 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
                 break;
         }
     }
+
+    private static bool IsRetryableAdmissionError(string? code) =>
+        code is "game_mismatch" or "runtime_not_ready" or "not_ready";
 
     private async Task SendCapabilitiesAsync(string correlationId, CancellationToken cancellationToken)
     {

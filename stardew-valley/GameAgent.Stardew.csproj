@@ -59,4 +59,8 @@
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RuntimeClient.Tests" />
+  </ItemGroup>
 </Project>
