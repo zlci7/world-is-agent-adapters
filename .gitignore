@@ -1,0 +1,15 @@
+bin/
+obj/
+dist/
+artifacts/
+.local/
+.superpowers/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
