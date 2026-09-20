@@ -15,7 +15,7 @@ The [world-is-agent](https://github.com/zlci7/world-is-agent) repository owns th
 2. Start the WIA Runtime and choose the matching game in the console. Configure a model if required and wait for **Ready**.
 3. Start the game with its adapter enabled and load a save.
 
-The default Runtime endpoint is `127.0.0.1:50051`. The console does not configure game installation paths. One Runtime process serves one selected Game Profile; choosing another game takes effect after restarting the Runtime. An adapter for another game is rejected with `game_mismatch`.
+The default Runtime endpoint is `127.0.0.1:50051`. The console does not configure game installation paths. Runtime 0.2.0 serves one selected Game Profile at a time. **Switch game** applies the selection in the running process and cancels current turns while retaining recorded history. **Model settings** changes the provider, model, API key and optional base URL. An adapter for another game receives `game_mismatch`; Stardew Adapter 0.1.1 and the current RimWorld adapter retry automatically until their game is selected.
 
 ## Versions And Protocol
 
@@ -36,7 +36,7 @@ The game guides provide independent build, test, installation, and packaging ent
 powershell -ExecutionPolicy Bypass -File scripts/check-architecture.ps1
 ```
 
-Final Stardew and RimWorld acceptance is shared with Phase10.4: connect, complete dialogue, switch in both directions after restart, and reject a mismatched game. GitHub repository publication, tags, and release uploads are owner actions.
+The user reported the Phase10.4/10.5 real-game baseline passed. Focused live-settings acceptance uses Runtime 0.2.0 and Stardew Adapter 0.1.1: switch games during a turn, verify history remains, switch back and complete dialogue after automatic reconnection, then change the model and complete another dialogue. These builds are local acceptance artifacts; tags and release uploads follow owner acceptance.
 
 ## License And Provenance
 
