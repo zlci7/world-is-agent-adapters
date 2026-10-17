@@ -12,10 +12,12 @@ public sealed class ObservationBuilder
     private const string PlayerEntityId = "player:local";
 
     private readonly ConversationStateStore conversationStore;
+    private readonly NativeObjectiveTracker? nativeObjectives;
 
-    public ObservationBuilder(ConversationStateStore conversationStore)
+    public ObservationBuilder(ConversationStateStore conversationStore, NativeObjectiveTracker? nativeObjectives = null)
     {
         this.conversationStore = conversationStore;
+        this.nativeObjectives = nativeObjectives;
     }
 
     public StardewObservation Build(NPC agent, Farmer player, string trigger, string worldId)
@@ -29,10 +31,12 @@ public sealed class ObservationBuilder
         int friendshipPoints = relationshipKnown ? player.getFriendshipLevelForNPC(agent.Name) : 0;
         bool isSpouse = false;
         bool isRoommate = false;
+        string relationshipStatus = "unknown";
         if (relationshipKnown && player.friendshipData.TryGetValue(agent.Name, out Friendship? friendship))
         {
             isSpouse = friendship.IsMarried();
             isRoommate = friendship.IsRoommate();
+            relationshipStatus = ProgressReader.Relationship(friendship);
         }
 
         return StardewObservationFactory.Build(new StardewObservationInput(
@@ -65,6 +69,10 @@ public sealed class ObservationBuilder
         )
         {
             Conversation = conversation?.ToObservationInput(),
+            RelationshipStatus = relationshipStatus,
+            WorldProgress = ProgressReader.World(),
+            NpcProgress = ProgressReader.Npc(agent.Name, player),
+            ObjectiveContext = this.nativeObjectives?.Observe(agent, player, worldId),
         });
     }
 

@@ -200,6 +200,23 @@ public static partial class ProtocolMapper
         if (observation.Conversation is not null)
             stardew.Fields["conversation"] = ForStruct(BuildConversation(observation.Conversation));
 
+        if (observation.WorldProgress is { } world)
+            stardew.Fields["world_progress"] = ForStruct(new Struct { Fields = {
+                ["community_center"] = Value.ForString(world.CommunityCenter),
+                ["joja_membership"] = Value.ForString(world.JojaMembership),
+                ["bus"] = Value.ForString(world.Bus), ["minecarts"] = Value.ForString(world.Minecarts),
+                ["greenhouse"] = Value.ForString(world.Greenhouse),
+            } });
+        if (observation.NpcProgress is { } npc)
+            stardew.Fields["npc_progress"] = ForStruct(new Struct { Fields = {
+                ["key_events"] = Value.ForList(npc.KeyEvents.Take(3).Select(e => ForStruct(new Struct { Fields = {
+                    ["event_id"] = Value.ForString(e.EventId), ["status"] = Value.ForString(e.Status),
+                } })).ToArray()),
+                ["language_understood"] = npc.LanguageUnderstood.HasValue ? Value.ForBool(npc.LanguageUnderstood.Value) : Value.ForNull(),
+            } });
+        if (observation.ObjectiveContext is { } objective)
+            stardew.Fields["objective_context"] = ForStruct(BuildObjective(objective));
+
         return stardew;
     }
 
@@ -273,6 +290,7 @@ public static partial class ProtocolMapper
             Fields =
             {
                 ["known"] = Value.ForBool(relationship.Known),
+                ["status"] = Value.ForString(relationship.Status),
                 ["is_spouse"] = Value.ForBool(relationship.IsSpouse),
                 ["is_roommate"] = Value.ForBool(relationship.IsRoommate),
             },
@@ -288,6 +306,25 @@ public static partial class ProtocolMapper
         }
 
         return relationshipStruct;
+    }
+
+    private static Struct BuildObjective(StardewObjectiveContext objective)
+    {
+        Struct result = new() { Fields = {
+            ["instance_ref"] = Value.ForString(objective.InstanceRef),
+            ["source"] = Value.ForString(objective.Source), ["kind"] = Value.ForString(objective.Kind),
+            ["npc_name"] = Value.ForString(objective.NpcName), ["status"] = Value.ForString(objective.Status),
+            ["item_id"] = Value.ForString(objective.ItemId),
+            ["required"] = Value.ForNumber(objective.Required),
+            ["caught"] = objective.Status == "unavailable" ? Value.ForNull() : Value.ForNumber(objective.Caught),
+            ["knowledge_basis"] = Value.ForString(objective.KnowledgeBasis),
+        } };
+        if (objective.DaysLeft.HasValue) result.Fields["days_left"] = Value.ForNumber(objective.DaysLeft.Value);
+        if (objective.ItemName is not null) result.Fields["item_name"] = Value.ForString(objective.ItemName);
+        if (objective.Seasons is not null) result.Fields["seasons"] = Value.ForString(objective.Seasons);
+        if (objective.TimeWindows is not null) result.Fields["time_windows"] = Value.ForString(objective.TimeWindows);
+        if (objective.Weather is not null) result.Fields["weather"] = Value.ForString(objective.Weather);
+        return result;
     }
 
     private static Struct BuildScene(StardewScene scene)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using GameAgent.Stardew.Runtime;
+using GameAgent.Stardew.State;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -15,12 +16,14 @@ public sealed class PlayerInteractProbe
     private readonly RuntimeClient runtimeClient;
     private readonly IMonitor monitor;
     private readonly IInputHelper input;
+    private readonly NativeObjectiveTracker? nativeObjectives;
 
     public PlayerInteractProbe(
         IEnumerable<string> agentTargets,
         RuntimeClient runtimeClient,
         IMonitor monitor,
-        IInputHelper input
+        IInputHelper input,
+        NativeObjectiveTracker? nativeObjectives = null
     )
     {
         this.agentTargets = (agentTargets ?? Enumerable.Empty<string>())
@@ -30,6 +33,7 @@ public sealed class PlayerInteractProbe
         this.runtimeClient = runtimeClient;
         this.monitor = monitor;
         this.input = input;
+        this.nativeObjectives = nativeObjectives;
     }
 
     public bool HandleButtonPressed(ButtonPressedEventArgs e)
@@ -49,6 +53,12 @@ public sealed class PlayerInteractProbe
         NPC? target = this.FindClickedTarget(e.Cursor, allowAdjacentTile: e.Button != SButton.MouseLeft);
         if (target is null)
             return false;
+
+        if (NativeInteraction.ShouldPassThrough(target, Game1.player))
+        {
+            this.nativeObjectives?.Observe(target, Game1.player, Constants.SaveFolderName ?? string.Empty);
+            return false;
+        }
 
         if (!this.runtimeClient.TrySendPlayerInteracted(target, Game1.player, TriggerForButton(e.Button), out string reason))
         {

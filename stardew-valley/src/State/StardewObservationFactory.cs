@@ -57,7 +57,7 @@ public sealed class StardewObservationFactory
                 Hearts: input.RelationshipKnown ? input.FriendshipPoints / 250 : null,
                 IsSpouse: input.IsSpouse,
                 IsRoommate: input.IsRoommate
-            ),
+            ) { Status = input.RelationshipKnown ? input.RelationshipStatus : Unknown },
             Scene: new StardewScene(
                 Trigger: NonEmpty(input.Trigger, Unknown),
                 NearbyNpcsTotal: nearbyTotal,
@@ -68,6 +68,9 @@ public sealed class StardewObservationFactory
         )
         {
             Conversation = NormalizeConversation(input.Conversation),
+            WorldProgress = input.WorldProgress,
+            NpcProgress = input.NpcProgress,
+            ObjectiveContext = input.ObjectiveContext,
         };
     }
 

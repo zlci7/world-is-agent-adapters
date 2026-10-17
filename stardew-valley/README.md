@@ -5,10 +5,10 @@ This directory contains the World Is Agent SMAPI adapter for Stardew Valley. It 
 The adapter version is read from `VERSION`. Its tested Protocol release is read from `protocol.version`. The current release contract is:
 
 ```text
-Adapter version: 0.1.1
+Adapter version: 0.1.2
 Protocol tag:    protocol-v1alpha2.0
-Release tag:     stardew-valley-v0.1.1
-Package:         wia-adapter-stardew-valley-v0.1.1.zip
+Release tag:     stardew-valley-v0.1.2
+Package:         wia-adapter-stardew-valley-v0.1.2.zip
 ```
 
 The build requires three explicit dependencies:
@@ -18,6 +18,14 @@ The build requires three explicit dependencies:
 - `ProtocolDir`: an exported Protocol directory whose `proto` files exactly match that tag.
 
 No script searches parent or sibling directories for these dependencies.
+
+## Context and native quests
+
+The 0.1.2 source build adds exact relationship status, bounded world progress and selected current-NPC event flags. Missing facts remain unknown. Held-item interactions and native quest reporting pass through to the game; ordinary conversation uses WIA. Dwarf dialogue keeps the game's language prerequisite.
+
+The single-player objective pilot reads one accepted native Willy fishing quest. Its instance reference and last observed result are stored in the game save through quest/player `modData`. Completion requires the native `completed` flag; disappearance is reported as unavailable, and reward collection is not inferred. Only Willy receives this objective context. General fish conditions come from `Data/Fish` and do not prove that a specific location can spawn that fish.
+
+This pilot does not create quests, change native requirements or issue rewards. Background native-API probes and unit tests are separate from live-game acceptance. Validate gifting, item delivery, fishing reporting, save/load, Runtime restart and rollback on a disposable save before using it as an accepted gameplay feature. Unavailable Runtime connections leave native interactions available.
 
 ## Get the pinned Protocol
 

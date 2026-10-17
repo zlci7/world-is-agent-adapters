@@ -17,6 +17,9 @@ public sealed record StardewObservation(
     public const string CurrentSchemaVersion = "0.1";
 
     public StardewConversation? Conversation { get; init; }
+    public StardewWorldProgress? WorldProgress { get; init; }
+    public StardewNpcProgress? NpcProgress { get; init; }
+    public StardewObjectiveContext? ObjectiveContext { get; init; }
 }
 
 public sealed record StardewTime(
@@ -61,7 +64,27 @@ public sealed record StardewRelationship(
     int? Hearts,
     bool IsSpouse,
     bool IsRoommate
-);
+)
+{
+    public string Status { get; init; } = "unknown";
+}
+
+public sealed record StardewWorldProgress(string CommunityCenter, string JojaMembership, string Bus, string Minecarts, string Greenhouse);
+public sealed record StardewKeyEvent(string EventId, string Status);
+public sealed record StardewNpcProgress(IReadOnlyList<StardewKeyEvent> KeyEvents)
+{
+    public bool? LanguageUnderstood { get; init; }
+}
+
+public sealed record StardewObjectiveContext(
+    string InstanceRef, string Source, string Kind, string NpcName, string Status,
+    string ItemId, int Required, int Caught, int? DaysLeft, string KnowledgeBasis)
+{
+    public string? ItemName { get; init; }
+    public string? Seasons { get; init; }
+    public string? TimeWindows { get; init; }
+    public string? Weather { get; init; }
+}
 
 public sealed record StardewScene(
     string Trigger,
@@ -120,6 +143,10 @@ public sealed record StardewObservationInput(
 )
 {
     public StardewConversationInput? Conversation { get; init; }
+    public string RelationshipStatus { get; init; } = "unknown";
+    public StardewWorldProgress? WorldProgress { get; init; }
+    public StardewNpcProgress? NpcProgress { get; init; }
+    public StardewObjectiveContext? ObjectiveContext { get; init; }
 }
 
 public sealed record StardewNearbyNpcInput(

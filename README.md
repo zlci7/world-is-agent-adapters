@@ -8,7 +8,7 @@
 
 | 游戏 | Adapter 版本 | 需要安装 | 支持平台 | 详细说明 |
 | --- | --- | --- | --- | --- |
-| Stardew Valley | 0.1.1 | Stardew Valley、SMAPI | Windows | [安装与构建说明](stardew-valley/README.md) |
+| Stardew Valley | 0.1.2 | Stardew Valley、SMAPI | Windows | [安装与构建说明](stardew-valley/README.md) |
 | RimWorld | 0.1.0 | RimWorld 1.6 | Windows x64 | [安装与构建说明](rimworld/README.md) |
 
 每个游戏的 Adapter 独立安装、独立发布，版本也分别维护。你只需要安装自己所玩游戏对应的 Adapter。
@@ -35,10 +35,12 @@ Runtime 默认监听 `127.0.0.1:50051`。Adapter 会在游戏启动后自动连�
 
 | Runtime | 游戏 | Adapter | 发布包 |
 | --- | --- | --- | --- |
-| 0.2.0 | Stardew Valley | 0.1.1 | `wia-adapter-stardew-valley-v0.1.1.zip` |
+| 0.2.0 | Stardew Valley | 0.1.2 | `wia-adapter-stardew-valley-v0.1.2.zip` |
 | 0.2.0 | RimWorld | 0.1.0 | `wia-adapter-rimworld-v0.1.0.zip` |
 
 Stardew Valley 和 RimWorld 分别发布，更新其中一个不会改变另一个的版本。
+
+The Stardew 0.1.2 source build includes bounded progress observations, native interaction routing and an experimental single-player Willy fishing-objective reader. These additions require focused live-game acceptance; the earlier game baseline does not validate them.
 
 ## 当前发布状态
 

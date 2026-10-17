@@ -170,6 +170,35 @@ public sealed class ProtocolMapperObservationTests
         Assert.False(stardew.Fields.ContainsKey("schedule"));
     }
 
+    [Fact]
+    public void MapsBoundedProgressAndSingleObjectiveWithoutInventingUnknownProgress()
+    {
+        var model = CreateObservationModel() with {
+            WorldProgress = new StardewWorldProgress("incomplete", "no", "pending", "available", "unknown"),
+            NpcProgress = ProgressFacts.Events("Willy", _ => null),
+            ObjectiveContext = new StardewObjectiveContext("568f54a9de614a1186d11e2969af349f", "game_native", "fishing", "Willy",
+                "unavailable", "(O)145", 3, 2, null, "quest_giver"),
+        };
+        var observation = ProtocolMapper.BuildObservation("npc:Willy", model, "world-a", TestSupport.FixedGameTime());
+        var state = TestSupport.RequireStruct(observation.State, "stardew");
+        var world = TestSupport.RequireStruct(state, "world_progress");
+        Assert.Equal("pending", TestSupport.RequireString(world, "bus"));
+        Assert.Equal("unknown", TestSupport.RequireString(world, "greenhouse"));
+        var progress = TestSupport.RequireStruct(state, "npc_progress");
+        Assert.Single(progress.Fields["key_events"].ListValue.Values);
+        Assert.Equal("711130", progress.Fields["key_events"].ListValue.Values[0].StructValue.Fields["event_id"].StringValue);
+        var objective = TestSupport.RequireStruct(state, "objective_context");
+        Assert.Equal("unavailable", TestSupport.RequireString(objective, "status"));
+        Assert.Equal(Value.KindOneofCase.NullValue, objective.Fields["caught"].KindCase);
+        Assert.False(objective.Fields.ContainsKey("days_left"));
+        Assert.False(objective.Fields.ContainsKey("reward"));
+
+        var old = TestSupport.RequireStruct(ProtocolMapper.BuildObservation("npc:Abigail", CreateObservationModel(),
+            "world-b", TestSupport.FixedGameTime()).State, "stardew");
+        Assert.False(old.Fields.ContainsKey("objective_context"));
+        Assert.False(old.Fields.ContainsKey("world_progress"));
+    }
+
     private static StardewObservation CreateObservationModel() => StardewObservationFactory.Build(new StardewObservationInput(
         Year: 2,
         Season: "fall",

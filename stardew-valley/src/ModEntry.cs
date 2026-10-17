@@ -24,6 +24,7 @@ public sealed class ModEntry : Mod
     private ConversationStateStore? conversationStore;
     private DialogueInteractionController? dialogueController;
     private ObservationBuilder? observationBuilder;
+    private NativeObjectiveTracker? nativeObjectives;
     private EmoteCapability? emoteCapability;
     private PresentDialogueCapability? presentDialogueCapability;
     private FacePlayerCapability? facePlayerCapability;
@@ -53,7 +54,8 @@ public sealed class ModEntry : Mod
         StardewMailProbe.Install(helper, this.Monitor, this.config);
         this.conversationStore = new ConversationStateStore(new ConversationIdGenerator());
         this.dialogueController = new DialogueInteractionController();
-        this.observationBuilder = new ObservationBuilder(this.conversationStore);
+        this.nativeObjectives = new NativeObjectiveTracker(this.Monitor);
+        this.observationBuilder = new ObservationBuilder(this.conversationStore, this.nativeObjectives);
         this.emoteCapability = new EmoteCapability();
         this.presentDialogueCapability = new PresentDialogueCapability(this.conversationStore, this.dialogueController);
         this.facePlayerCapability = new FacePlayerCapability();
@@ -92,7 +94,8 @@ public sealed class ModEntry : Mod
             this.config.AgentTargets,
             this.runtimeClient,
             this.Monitor,
-            helper.Input
+            helper.Input,
+            this.nativeObjectives
         );
 
         helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
@@ -192,6 +195,7 @@ public sealed class ModEntry : Mod
 
     private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
     {
+        this.nativeObjectives?.Reset();
         this.runtimeClient?.AbortPendingCheckpointSave("save_reloaded");
         this.runtimeClient?.BeginWorldContext(this.ReadCheckpointMarker());
     }
@@ -218,6 +222,7 @@ public sealed class ModEntry : Mod
     /// </summary>
     private void OnSaving(object? sender, SavingEventArgs e)
     {
+        this.nativeObjectives?.Update();
         CheckpointMarker? marker;
         try
         {
@@ -265,12 +270,14 @@ public sealed class ModEntry : Mod
 
     private void OnReturnedToTitle(object? sender, ReturnedToTitleEventArgs e)
     {
+        this.nativeObjectives?.Reset();
         this.runtimeClient?.AbortPendingCheckpointSave("returned_to_title");
         this.runtimeClient?.ClearWorldContext();
     }
 
     private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
+        if (e.IsMultipleOf(30)) this.nativeObjectives?.Update();
         this.dispatcher?.Drain();
         this.dialogueController?.Update();
         this.moveToCapability?.Update();

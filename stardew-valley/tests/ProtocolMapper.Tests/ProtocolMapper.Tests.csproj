@@ -62,5 +62,7 @@
     <Compile Include="..\..\src\Events\PlayerInteractTrigger.cs" Link="PlayerInteractTrigger.cs" />
     <Compile Include="..\..\src\State\StardewObservation.cs" Link="StardewObservation.cs" />
     <Compile Include="..\..\src\State\StardewObservationFactory.cs" Link="StardewObservationFactory.cs" />
+    <Compile Include="..\..\src\State\ProgressFacts.cs" Link="ProgressFacts.cs" />
+    <Compile Include="..\..\src\State\NativeObjectiveState.cs" Link="NativeObjectiveState.cs" />
   </ItemGroup>
 </Project>
