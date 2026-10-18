@@ -27,6 +27,14 @@ The single-player objective pilot reads one accepted native Willy fishing quest.
 
 This pilot does not create quests, change native requirements or issue rewards. Background native-API probes and unit tests are separate from live-game acceptance. Validate gifting, item delivery, fishing reporting, save/load, Runtime restart and rollback on a disposable save before using it as an accepted gameplay feature. Unavailable Runtime connections leave native interactions available.
 
+## Gift experiences
+
+The source build observes successful single-player gifts through an observation-only Harmony prefix/postfix on the native `NPC.receiveGift` method. It records a receipt only when the native per-NPC/item gift ledger increases. Held-item input, item deduction, native dialogue and quest delivery stay owned by the game. Harmony is supplied by SMAPI and is not packaged with the Adapter.
+
+The optional `gameagent.experiences.v1` extension sends confirmed facts to a supporting Runtime without starting an AgentTurn. The player's save stores receipt IDs and an offline outbox under `gameagent.StardewAdapterProbe/experiences.v1`. Durable acknowledgment removes the pending body and retains its ID. NPC observations provide that NPC's valid IDs and game clock; loading an earlier save restores the earlier membership. Initial gift focus lasts three game days. Multiplayer gift capture is not enabled.
+
+Current background tests cover journal persistence, acknowledgment, rollback membership, cross-language fixtures and patch registration against Stardew 1.6.15. They do not verify real input, item deduction or NPC responses. Failed capture is logged and leaves native interaction available; unavailable Runtime storage keeps receipts pending. Save membership cannot reconstruct acknowledged facts after deletion of the Runtime database.
+
 ## Get the pinned Protocol
 
 Use a Protocol source checkout that contains the tag named by this directory's `protocol.version`. A fresh checkout can be obtained from `https://github.com/zlci7/world-is-agent.git`; tag publication is handled by the repository owner. Export the pinned files rather than using an arbitrary checkout's current Protocol:

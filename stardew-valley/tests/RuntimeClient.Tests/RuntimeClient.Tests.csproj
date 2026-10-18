@@ -16,6 +16,9 @@
     <Reference Include="MonoGame.Framework" HintPath="$(GamePath)/MonoGame.Framework.dll" />
     <Reference Include="StardewValley.GameData" HintPath="$(GamePath)/StardewValley.GameData.dll" />
     <Reference Include="xTile" HintPath="$(GamePath)/xTile.dll" />
+    <Reference Include="0Harmony" HintPath="$(GamePath)/smapi-internal/0Harmony.dll" />
+    <Reference Include="MonoMod.Common" HintPath="$(GamePath)/smapi-internal/MonoMod.Common.dll" />
+    <Reference Include="Mono.Cecil" HintPath="$(GamePath)/smapi-internal/Mono.Cecil.dll" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="All" />

@@ -51,6 +51,7 @@ public static partial class ProtocolMapper
             SessionId = sessionId,
         };
         hello.SupportedExtensions.Add(RuntimeSessionState.TaskExtension);
+        hello.SupportedExtensions.Add(RuntimeSessionState.ExperienceExtension);
         return hello;
     }
 

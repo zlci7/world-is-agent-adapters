@@ -16,7 +16,7 @@ public sealed class ProtocolMapperTaskTests
     {
         AdapterHello hello = ProtocolMapper.BuildAdapterHello("adapter", "1.0", "v1alpha2", "stardew-valley", "1.6", "session");
 
-        Assert.Equal(RuntimeSessionState.TaskExtension, Assert.Single(hello.SupportedExtensions));
+        Assert.Equal(new[] { RuntimeSessionState.TaskExtension, RuntimeSessionState.ExperienceExtension }, hello.SupportedExtensions);
     }
 
     [Fact]

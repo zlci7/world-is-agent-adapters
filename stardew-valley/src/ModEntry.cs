@@ -25,6 +25,7 @@ public sealed class ModEntry : Mod
     private DialogueInteractionController? dialogueController;
     private ObservationBuilder? observationBuilder;
     private NativeObjectiveTracker? nativeObjectives;
+    private GiftExperienceTracker? experiences;
     private EmoteCapability? emoteCapability;
     private PresentDialogueCapability? presentDialogueCapability;
     private FacePlayerCapability? facePlayerCapability;
@@ -55,6 +56,8 @@ public sealed class ModEntry : Mod
         this.conversationStore = new ConversationStateStore(new ConversationIdGenerator());
         this.dialogueController = new DialogueInteractionController();
         this.nativeObjectives = new NativeObjectiveTracker(this.Monitor);
+        this.experiences = new GiftExperienceTracker(this.Monitor, this.config.AgentTargets);
+        this.experiences.Install();
         this.observationBuilder = new ObservationBuilder(this.conversationStore, this.nativeObjectives);
         this.emoteCapability = new EmoteCapability();
         this.presentDialogueCapability = new PresentDialogueCapability(this.conversationStore, this.dialogueController);
@@ -97,6 +100,7 @@ public sealed class ModEntry : Mod
             helper.Input,
             this.nativeObjectives
         );
+        this.runtimeClient.Experiences = this.experiences;
 
         helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
         helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
@@ -134,6 +138,7 @@ public sealed class ModEntry : Mod
             this.phase9RouteProbe?.Dispose();
             this.phase9SaveProbe?.Dispose();
             this.runtimeClient?.Dispose();
+            this.experiences?.Dispose();
         }
     }
 
@@ -195,6 +200,7 @@ public sealed class ModEntry : Mod
 
     private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
     {
+        this.experiences?.Load();
         this.nativeObjectives?.Reset();
         this.runtimeClient?.AbortPendingCheckpointSave("save_reloaded");
         this.runtimeClient?.BeginWorldContext(this.ReadCheckpointMarker());
@@ -270,6 +276,7 @@ public sealed class ModEntry : Mod
 
     private void OnReturnedToTitle(object? sender, ReturnedToTitleEventArgs e)
     {
+        this.experiences?.Reset();
         this.nativeObjectives?.Reset();
         this.runtimeClient?.AbortPendingCheckpointSave("returned_to_title");
         this.runtimeClient?.ClearWorldContext();
@@ -278,6 +285,7 @@ public sealed class ModEntry : Mod
     private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         if (e.IsMultipleOf(30)) this.nativeObjectives?.Update();
+        if (e.IsMultipleOf(60)) this.runtimeClient?.FlushExperiences();
         this.dispatcher?.Drain();
         this.dialogueController?.Update();
         this.moveToCapability?.Update();

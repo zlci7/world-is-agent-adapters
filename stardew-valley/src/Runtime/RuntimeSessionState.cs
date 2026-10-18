@@ -17,9 +17,12 @@ public enum RuntimeSessionPhase
 public sealed class RuntimeSessionState
 {
     public const string TaskExtension = "gameagent.tasks.v1";
+    public const string ExperienceExtension = "gameagent.experiences.v1";
 
     private readonly object gate = new();
     private bool taskExtensionAccepted;
+    private bool experienceExtensionAccepted;
+    public bool ExperienceExtensionAccepted { get { lock (this.gate) return this.experienceExtensionAccepted; } }
     private RuntimeSessionPhase phase = RuntimeSessionPhase.Disconnected;
 
     public RuntimeSessionPhase Phase
@@ -51,6 +54,7 @@ public sealed class RuntimeSessionState
         lock (this.gate)
         {
             this.taskExtensionAccepted = false;
+            this.experienceExtensionAccepted = false;
             this.phase = RuntimeSessionPhase.AwaitingEnvironmentReady;
         }
     }
@@ -65,6 +69,7 @@ public sealed class RuntimeSessionState
 
             this.taskExtensionAccepted = acceptedExtensions.Any(extension =>
                 string.Equals(extension, TaskExtension, StringComparison.Ordinal));
+            this.experienceExtensionAccepted = acceptedExtensions.Contains(ExperienceExtension, StringComparer.Ordinal);
             this.phase = RuntimeSessionPhase.AwaitingCapabilityRequest;
             errorCode = string.Empty;
             return true;
@@ -146,6 +151,7 @@ public sealed class RuntimeSessionState
         lock (this.gate)
         {
             this.taskExtensionAccepted = false;
+            this.experienceExtensionAccepted = false;
             this.phase = RuntimeSessionPhase.Disconnected;
         }
     }

@@ -29,6 +29,7 @@
     <Reference Include="StardewModdingAPI" HintPath="$(GamePath)\StardewModdingAPI.dll" Private="False" />
     <Reference Include="StardewValley.GameData" HintPath="$(GamePath)\StardewValley.GameData.dll" Private="False" />
     <Reference Include="xTile" HintPath="$(GamePath)\xTile.dll" Private="False" />
+    <Reference Include="0Harmony" HintPath="$(GamePath)\smapi-internal\0Harmony.dll" Private="False" />
   </ItemGroup>
 
   <ItemGroup>

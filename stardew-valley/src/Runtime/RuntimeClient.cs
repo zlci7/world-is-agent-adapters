@@ -119,6 +119,28 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     public bool IsReady => this.sessionState.CanUseRuntime && this.stream is not null;
 
     public bool IsTaskReady => this.sessionState.CanUseTasks && this.stream is not null;
+    public GiftExperienceTracker? Experiences { get; set; }
+    private long experienceRetryAt;
+
+    // Called on the game thread; the journal is changed only there.
+    public void FlushExperiences()
+    {
+        if (!this.IsReady || !this.sessionState.ExperienceExtensionAccepted ||
+            Environment.TickCount64 < this.experienceRetryAt) return;
+        var messages = this.PendingExperienceMessages();
+        if (messages.Count == 0) return;
+        this.experienceRetryAt = Environment.TickCount64 + 5_000;
+        this.SendFireAndForget(this.SendBatchAsync(messages, this.cancellation?.Token ?? CancellationToken.None), "confirmed experiences");
+    }
+
+    private List<AdapterMessage> PendingExperienceMessages(string? target = null)
+    {
+        if (!this.sessionState.ExperienceExtensionAccepted) return new();
+        return (this.Experiences?.Pending ?? Array.Empty<GiftReceipt>())
+            .Where(receipt => receipt.WorldId == this.currentWorldId && (target is null || ProtocolMapper.ToNpcEntityId(receipt.NpcName) == target))
+            .OrderByDescending(receipt => receipt.Tick).Take(8)
+            .Select(receipt => new AdapterMessage { MessageId = ProtocolMapper.NewMessageId("experience_msg"), Event = ProtocolMapper.BuildGiftExperience(receipt) }).ToList();
+    }
 
     /// <summary>
     /// Mail Framework Mod, resolved at GameLaunched. It cannot be resolved any earlier: SMAPI
@@ -287,14 +309,9 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     {
         try
         {
-            await this.SendAsync(
-                new AdapterMessage
-                {
-                    MessageId = ProtocolMapper.NewMessageId("event_msg"),
-                    Event = gameEvent,
-                },
-                this.cancellation?.Token ?? CancellationToken.None
-            );
+            var messages = this.PendingExperienceMessages(gameEvent.TargetEntityId);
+            messages.Add(new AdapterMessage { MessageId = ProtocolMapper.NewMessageId("event_msg"), Event = gameEvent });
+            await this.SendBatchAsync(messages, this.cancellation?.Token ?? CancellationToken.None);
         }
         catch
         {
@@ -971,6 +988,8 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
             NPC npc = this.RequireNpc(request.EntityId);
             StardewObservation stardewObservation = this.observationBuilder.Build(npc, Game1.player, "runtime_observe", this.currentWorldId);
             Observation observation = ProtocolMapper.BuildObservation(request.EntityId, stardewObservation, this.currentWorldId);
+            if (this.sessionState.ExperienceExtensionAccepted && this.Experiences?.ValidIds(npc.Name) is { } validIds)
+                ProtocolMapper.AttachExperienceView(observation, GameClock.ToTick(Game1.year, GameClock.SeasonIndex(Game1.currentSeason), Game1.dayOfMonth, Game1.timeOfDay), validIds);
             foreach (TaskEvidence fact in this.deferredTaskEvidence.Take(request.EntityId))
                 observation.TaskEvidence.Add(fact);
 
@@ -1095,6 +1114,13 @@ public sealed class RuntimeClient : IDisposable, ICheckpointTransport
     {
         if (ack is null)
             return;
+
+        if ((this.Experiences?.Pending ?? Array.Empty<GiftReceipt>()).Any(receipt => receipt.Id == ack.EventId))
+        {
+            if (ack.Status is EventAckStatus.Accepted or EventAckStatus.Duplicate) this.Experiences!.Acknowledge(ack.EventId);
+            else this.monitor.Log($"GameAgent experience awaiting retry: {ack.Error?.Code ?? "rejected"}.", LogLevel.Warn);
+            return;
+        }
 
         bool taskArrival = this.taskInteractionLifecycle.Find(ack.EventId) is not null;
         InteractionContextSnapshot? ackContext = string.IsNullOrWhiteSpace(ack.EventId)
